@@ -1,16 +1,20 @@
+import util.TransformationUtil;
+
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseMotionAdapter;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class Graph extends JDialog {
     private static final int CELL_WIDTH = 10;
     private static final int CELL_HEIGHT = 10;
-    static final int WIDTH = 1056;
-    static final int HEIGHT = 520;
+    static final int WIDTH = 1080;
+    static final int HEIGHT = 560;
     private static final Color CUSTOM_GRAY = new Color(128, 128, 128, 64);
     private static final Color CUSTOM_BLACK = new Color(0, 0, 0, 128);
 
@@ -25,13 +29,21 @@ public class Graph extends JDialog {
     private JSpinner spinner3;
     private JButton redrawEuclid;
     private Point graphCentre;
-    private Point E;
-    private Point F;
+    private Map<String, Point> points;
+    private List<Point> arcPoints;
 
     Graph() {
         setContentPane(contentPane);
         setModal(true);
         initListeners();
+        points = new HashMap<>();
+        arcPoints = new ArrayList<>();
+        redrawEuclid.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                super.mouseClicked(e);
+            }
+        });
     }
 
     private void initListeners() {
@@ -47,6 +59,9 @@ public class Graph extends JDialog {
             public void mouseClicked(MouseEvent e) {
                 super.mouseClicked(e);
                 initCenter();
+                initLinePoints();
+                initCirclePoints(GraphConfig.DIAMETER_1 / 2, graphCentre.x, graphCentre.y, "CIRCLE");
+                initCirclePoints(GraphConfig.DIAMETER_2 / 2, graphCentre.x, graphCentre.y, "ARC");
                 clearSurface();
                 drawGraph();
             }
@@ -60,6 +75,27 @@ public class Graph extends JDialog {
                 dialog.setVisible(true);
             }
         });
+        redrawEuclid.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                super.mouseClicked(e);
+                clearSurface();
+                points = TransformationUtil.transformEuclid(points, (Integer) spinner3.getValue(), new Point((Integer) spinner1.getValue(), (Integer) spinner2.getValue()));
+                drawGraph();
+            }
+        });
+    }
+
+    private void initCirclePoints(int radius, int centerX, int centerY, String key) {
+        Point E = arcPoints.get(0);
+        Point F = arcPoints.get(1);
+        for (int i = 0; i < 360; i++) {
+            int x = (int) (centerX + radius * Math.cos(i));
+            int y = (int) (centerY + radius * Math.sin(i));
+            if ((x >= E.x && x >= F.x) || (y >= E.y && y <= F.y)) {
+                this.points.put(key + i, new Point(x, y));
+            }
+        }
     }
 
     private void drawCoordinates(MouseEvent e) {
@@ -70,27 +106,13 @@ public class Graph extends JDialog {
         Graphics graphics = innerPane.getGraphics();
 
         graphics.setColor(CUSTOM_BLACK);
-        int c1Radius = GraphConfig.DIAMETER_1 / 2;
         drawGraphLines(graphics);
-        drawCircle(graphics, c1Radius, graphCentre.x, graphCentre.y, 0, 360);
-        int c2Radius = GraphConfig.DIAMETER_2 / 2;
-        drawCircle(graphics, c2Radius, graphCentre.x, graphCentre.y, 0, 360);
+        drawCircle(graphics);
+        drawCircle(graphics);
+        System.out.println(points);
     }
 
-    private List<Point> drawCircle(Graphics graphics, int radius, int centerX, int centerY, int startAngle, int endAngle) {
-        ArrayList<Point> points = new ArrayList<>();
-        for (int i = startAngle; i < endAngle; i++) {
-            int x = (int) (centerX + radius * Math.cos(i));
-            int y = (int) (centerY + radius * Math.sin(i));
-            if ((x >= E.x && x >= F.x) || (y >= E.y && y <= F.y)) {
-                points.add(new Point(x, y));
-                graphics.drawLine(x, y, x, y);
-            }
-        }
-        return points;
-    }
-
-    private void drawGraphLines(Graphics graphics) {
+    private void initLinePoints() {
         Point A = new Point(graphCentre.x - GraphConfig.WIDTH_1, graphCentre.y - GraphConfig.HEIGHT_3);
         Point B = new Point(graphCentre.x - GraphConfig.WIDTH_1, A.y + GraphConfig.HEIGHT_1);
         Point C = new Point(graphCentre.x - GraphConfig.WIDTH_1 + GraphConfig.WIDTH_2, graphCentre.y + GraphConfig.HEIGHT_2 + GraphConfig.HEIGHT_3);
@@ -98,14 +120,40 @@ public class Graph extends JDialog {
         Point E = new Point(getArcIntersection(), graphCentre.y + GraphConfig.HEIGHT_3);
         Point F = new Point(getArcIntersection(), graphCentre.y - GraphConfig.HEIGHT_3);
 
-        graphics.drawLine(A.x, A.y, B.x, B.y);
-        graphics.drawLine(B.x, B.y, C.x, C.y);
-        graphics.drawLine(C.x, C.y, D.x, D.y);
-        graphics.drawLine(D.x, D.y, E.x, E.y);
-        graphics.drawLine(A.x, A.y, F.x, F.y);
+        points.put("A", A);
+        points.put("B", B);
+        points.put("C", C);
+        points.put("D", D);
+        points.put("E", E);
+        points.put("F", F);
 
-        this.E = E;
-        this.F = F;
+        arcPoints.add(E);
+        arcPoints.add(F);
+    }
+
+    private void drawCircle(Graphics graphics) {
+        for (Map.Entry<String, Point> entry : points.entrySet()) {
+            if (entry.getKey().contains("ARC") || entry.getKey().contains("CIRCLE")) {
+                Point value = entry.getValue();
+                graphics.drawLine(value.x, value.y, value.x, value.y);
+            }
+        }
+
+    }
+
+    private void drawGraphLines(Graphics graphics) {
+        Point a = points.get("A");
+        Point b = points.get("B");
+        Point c = points.get("C");
+        Point d = points.get("D");
+        Point e = points.get("E");
+        Point f = points.get("F");
+
+        graphics.drawLine(a.x, a.y, b.x, b.y);
+        graphics.drawLine(b.x, b.y, c.x, c.y);
+        graphics.drawLine(c.x, c.y, d.x, d.y);
+        graphics.drawLine(d.x, d.y, e.x, e.y);
+        graphics.drawLine(a.x, a.y, f.x, f.y);
     }
 
     private int getArcIntersection() {
@@ -162,5 +210,8 @@ public class Graph extends JDialog {
         graphics.fillRect(bounds.x - CELL_WIDTH, bounds.y - CELL_HEIGHT, bounds.width, bounds.height);
         drawGrid();
         drawAxis();
+        initLinePoints();
+        initCirclePoints(GraphConfig.DIAMETER_1 / 2, graphCentre.x, graphCentre.y, "CIRCLE");
+        initCirclePoints(GraphConfig.DIAMETER_2 / 2, graphCentre.x, graphCentre.y, "ARC");
     }
 }
