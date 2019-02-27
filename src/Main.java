@@ -1,3 +1,4 @@
+import javax.swing.*;
 import java.awt.*;
 
 
@@ -9,6 +10,16 @@ public class Main {
     }
 
     private static void displayGraph() {
+        try {
+            for (UIManager.LookAndFeelInfo info : UIManager.getInstalledLookAndFeels()) {
+                if ("Nimbus".equals(info.getName())) {
+                    UIManager.setLookAndFeel(info.getClassName());
+                    break;
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
         Graph graph = new Graph();
         graph.setPreferredSize(new Dimension(Graph.WIDTH, Graph.HEIGHT));
         graph.pack();

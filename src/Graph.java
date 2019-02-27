@@ -3,23 +3,30 @@ import java.awt.*;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseMotionAdapter;
+import java.util.ArrayList;
+import java.util.List;
 
 public class Graph extends JDialog {
     private static final int CELL_WIDTH = 10;
     private static final int CELL_HEIGHT = 10;
-    static final int WIDTH = 1040;
-    static final int HEIGHT = 640;
+    static final int WIDTH = 1056;
+    static final int HEIGHT = 520;
     private static final Color CUSTOM_GRAY = new Color(128, 128, 128, 64);
-    private static final Color CUSTOM_BLACK = new Color(0,0,0,128);
+    private static final Color CUSTOM_BLACK = new Color(0, 0, 0, 128);
 
     private JPanel contentPane;
     private JPanel innerPane;
     private JPanel controlPane;
     private JLabel coordinates;
-    private JButton drawGrid;
     private JButton adjustParams;
     private JButton drawGraph;
-    private TDCoordinate graphCentre;
+    private JSpinner spinner1;
+    private JSpinner spinner2;
+    private JSpinner spinner3;
+    private JButton redrawEuclid;
+    private Point graphCentre;
+    private Point E;
+    private Point F;
 
     Graph() {
         setContentPane(contentPane);
@@ -35,19 +42,12 @@ public class Graph extends JDialog {
                 drawCoordinates(e);
             }
         });
-        drawGrid.addMouseListener(new MouseAdapter() {
-            @Override
-            public void mouseClicked(MouseEvent e) {
-                super.mouseClicked(e);
-                initCenter();
-                drawGrid();
-                drawAxis();
-            }
-        });
         drawGraph.addMouseListener(new MouseAdapter() {
             @Override
             public void mouseClicked(MouseEvent e) {
                 super.mouseClicked(e);
+                initCenter();
+                clearSurface();
                 drawGraph();
             }
         });
@@ -71,35 +71,51 @@ public class Graph extends JDialog {
 
         graphics.setColor(CUSTOM_BLACK);
         int c1Radius = GraphConfig.DIAMETER_1 / 2;
-        graphics.drawOval(graphCentre.getX() - c1Radius, graphCentre.getY() - c1Radius, GraphConfig.DIAMETER_1, GraphConfig.DIAMETER_1);
-        int c2Radius = GraphConfig.DIAMETER_2 / 2;
-        graphics.drawArc(graphCentre.getX() - c2Radius, graphCentre.getY() - c2Radius, GraphConfig.DIAMETER_2, GraphConfig.DIAMETER_2, GraphConfig.START_ANGLE, GraphConfig.END_ANGLE);
         drawGraphLines(graphics);
+        drawCircle(graphics, c1Radius, graphCentre.x, graphCentre.y, 0, 360);
+        int c2Radius = GraphConfig.DIAMETER_2 / 2;
+        drawCircle(graphics, c2Radius, graphCentre.x, graphCentre.y, 0, 360);
+    }
+
+    private List<Point> drawCircle(Graphics graphics, int radius, int centerX, int centerY, int startAngle, int endAngle) {
+        ArrayList<Point> points = new ArrayList<>();
+        for (int i = startAngle; i < endAngle; i++) {
+            int x = (int) (centerX + radius * Math.cos(i));
+            int y = (int) (centerY + radius * Math.sin(i));
+            if ((x >= E.x && x >= F.x) || (y >= E.y && y <= F.y)) {
+                points.add(new Point(x, y));
+                graphics.drawLine(x, y, x, y);
+            }
+        }
+        return points;
     }
 
     private void drawGraphLines(Graphics graphics) {
-        TDCoordinate A = new TDCoordinate(graphCentre.getX() - GraphConfig.WIDTH_1, graphCentre.getY() - GraphConfig.HEIGHT_3);
-        TDCoordinate B = new TDCoordinate(graphCentre.getX() - GraphConfig.WIDTH_1, A.getY() + GraphConfig.HEIGHT_1);
-        TDCoordinate C = new TDCoordinate(graphCentre.getX() - GraphConfig.WIDTH_1 + GraphConfig.WIDTH_2, graphCentre.getY() + GraphConfig.HEIGHT_2 + GraphConfig.HEIGHT_3);
-        TDCoordinate D = new TDCoordinate(graphCentre.getX() - GraphConfig.WIDTH_1 + GraphConfig.WIDTH_2, graphCentre.getY() + GraphConfig.HEIGHT_3);
-        TDCoordinate E = new TDCoordinate(getArcIntersection(), graphCentre.getY() + GraphConfig.HEIGHT_3);
-        TDCoordinate F = new TDCoordinate(getArcIntersection(), graphCentre.getY() - GraphConfig.HEIGHT_3);
+        Point A = new Point(graphCentre.x - GraphConfig.WIDTH_1, graphCentre.y - GraphConfig.HEIGHT_3);
+        Point B = new Point(graphCentre.x - GraphConfig.WIDTH_1, A.y + GraphConfig.HEIGHT_1);
+        Point C = new Point(graphCentre.x - GraphConfig.WIDTH_1 + GraphConfig.WIDTH_2, graphCentre.y + GraphConfig.HEIGHT_2 + GraphConfig.HEIGHT_3);
+        Point D = new Point(graphCentre.x - GraphConfig.WIDTH_1 + GraphConfig.WIDTH_2, graphCentre.y + GraphConfig.HEIGHT_3);
+        Point E = new Point(getArcIntersection(), graphCentre.y + GraphConfig.HEIGHT_3);
+        Point F = new Point(getArcIntersection(), graphCentre.y - GraphConfig.HEIGHT_3);
 
-        graphics.drawLine(A.getX(), A.getY(), B.getX(), B.getY());
-        graphics.drawLine(B.getX(), B.getY(), C.getX(), C.getY());
-        graphics.drawLine(C.getX(), C.getY(), D.getX(), D.getY());
-        graphics.drawLine(D.getX(), D.getY(), E.getX(), E.getY());
-        graphics.drawLine(A.getX(), A.getY(), F.getX(), F.getY());
+        graphics.drawLine(A.x, A.y, B.x, B.y);
+        graphics.drawLine(B.x, B.y, C.x, C.y);
+        graphics.drawLine(C.x, C.y, D.x, D.y);
+        graphics.drawLine(D.x, D.y, E.x, E.y);
+        graphics.drawLine(A.x, A.y, F.x, F.y);
+
+        this.E = E;
+        this.F = F;
     }
 
     private int getArcIntersection() {
         int radius = GraphConfig.DIAMETER_2 / 2;
-        return (int) (graphCentre.getX() - radius * Math.cos(Math.toRadians((double) GraphConfig.FACT_ANGLE)));
+        return (int) (graphCentre.x - radius * Math.cos(Math.toRadians((double) GraphConfig.FACT_ANGLE)));
     }
 
     private void initCenter() {
         Dimension size = innerPane.getSize();
-        this.graphCentre = new TDCoordinate(size.width / 2, size.height / 2);
+        this.graphCentre = new Point(size.width / 2, size.height / 2);
     }
 
     private void drawAxis() {
@@ -125,14 +141,26 @@ public class Graph extends JDialog {
 
     private void drawGrid() {
         Graphics graphics = innerPane.getGraphics();
+        Graphics2D g2 = (Graphics2D) graphics;
+        g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
         Dimension size = innerPane.getSize();
         graphics.setPaintMode();
         graphics.setColor(CUSTOM_GRAY);
         for (int i = 0; i < size.width / CELL_WIDTH; i++) {
-            graphics.drawLine(0, graphCentre.getY() - i * CELL_WIDTH, size.width, graphCentre.getY() - i * CELL_WIDTH);
-            graphics.drawLine(0, graphCentre.getY() + i * CELL_WIDTH, size.width, graphCentre.getY() + i * CELL_WIDTH);
-            graphics.drawLine(graphCentre.getX() - i * CELL_HEIGHT, 0, graphCentre.getX() - i * CELL_HEIGHT, size.height);
-            graphics.drawLine(graphCentre.getX() + i * CELL_HEIGHT, 0, graphCentre.getX() + i * CELL_HEIGHT, size.height);
+            graphics.drawLine(0, graphCentre.y - i * CELL_WIDTH, size.width, graphCentre.y - i * CELL_WIDTH);
+            graphics.drawLine(0, graphCentre.y + i * CELL_WIDTH, size.width, graphCentre.y + i * CELL_WIDTH);
+            graphics.drawLine(graphCentre.x - i * CELL_HEIGHT, 0, graphCentre.x - i * CELL_HEIGHT, size.height);
+            graphics.drawLine(graphCentre.x + i * CELL_HEIGHT, 0, graphCentre.x + i * CELL_HEIGHT, size.height);
         }
+    }
+
+    private void clearSurface() {
+        Graphics graphics = innerPane.getGraphics();
+        Rectangle bounds = innerPane.getBounds();
+        graphics.setColor(Color.WHITE);
+        graphics.clearRect(bounds.x - CELL_WIDTH, bounds.y - CELL_HEIGHT, bounds.width, bounds.height);
+        graphics.fillRect(bounds.x - CELL_WIDTH, bounds.y - CELL_HEIGHT, bounds.width, bounds.height);
+        drawGrid();
+        drawAxis();
     }
 }
