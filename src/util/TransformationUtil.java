@@ -27,4 +27,17 @@ public class TransformationUtil {
         }
         return transformedPoints;
     }
+
+    public static Map<String, Point> transformGraphAffin(Map<String, Point> rawPoints, Point newCenter, Point xDirection, Point yDirection) {
+        Map<String, Point> transformedPoints = new HashMap<>();
+        for (Map.Entry<String, Point> entry : rawPoints.entrySet()) {
+            int rawX = entry.getValue().x;
+            int rawY = entry.getValue().y;
+            int transformedX = rawX * xDirection.x + rawY * xDirection.y + newCenter.x;
+            int transformedY = rawX * yDirection.x + rawY * yDirection.y + newCenter.y;
+            Point transformedPoint = new Point(transformedX, transformedY);
+            transformedPoints.put(entry.getKey(), transformedPoint);
+        }
+        return transformedPoints;
+    }
 }

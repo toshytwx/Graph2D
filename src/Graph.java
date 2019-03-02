@@ -28,22 +28,29 @@ public class Graph extends JDialog {
     private JSpinner spinner2;
     private JSpinner spinner3;
     private JButton redrawEuclid;
+    private JSpinner spinner6;
+    private JSpinner spinner5;
+    private JSpinner spinner4;
+    private JSpinner spinner7;
+    private JSpinner spinner8;
+    private JSpinner spinner9;
+    private JButton redrawAffinn;
     private Point graphCentre;
-    private Map<String, Point> points;
+    private Map<String, Point> graphPoints;
+    private Map<Point, Point> gridPoints;
+    private Map<Point, Point> axisPoints;
+    private Point xAxeKeyPoint;
+    private Point yAxeKeyPoint;
     private List<Point> arcPoints;
 
     Graph() {
         setContentPane(contentPane);
         setModal(true);
         initListeners();
-        points = new HashMap<>();
+        graphPoints = new HashMap<>();
+        gridPoints = new HashMap<>();
+        axisPoints = new HashMap<>();
         arcPoints = new ArrayList<>();
-        redrawEuclid.addMouseListener(new MouseAdapter() {
-            @Override
-            public void mouseClicked(MouseEvent e) {
-                super.mouseClicked(e);
-            }
-        });
     }
 
     private void initListeners() {
@@ -59,9 +66,7 @@ public class Graph extends JDialog {
             public void mouseClicked(MouseEvent e) {
                 super.mouseClicked(e);
                 initCenter();
-                initLinePoints();
-                initCirclePoints(GraphConfig.DIAMETER_1 / 2, graphCentre.x, graphCentre.y, "CIRCLE");
-                initCirclePoints(GraphConfig.DIAMETER_2 / 2, graphCentre.x, graphCentre.y, "ARC");
+                initPoints();
                 clearSurface();
                 drawGraph();
             }
@@ -80,7 +85,19 @@ public class Graph extends JDialog {
             public void mouseClicked(MouseEvent e) {
                 super.mouseClicked(e);
                 clearSurface();
-                points = TransformationUtil.transformEuclid(points, (Integer) spinner3.getValue(), new Point((Integer) spinner1.getValue(), (Integer) spinner2.getValue()));
+                graphPoints = TransformationUtil.transformEuclid(graphPoints, (Integer) spinner3.getValue(), new Point((Integer) spinner1.getValue(), (Integer) spinner2.getValue()));
+                drawGraph();
+            }
+        });
+        redrawAffinn.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                super.mouseClicked(e);
+                clearSurface();
+                graphPoints = TransformationUtil.transformGraphAffin(graphPoints,
+                        new Point((Integer) spinner4.getValue(), (Integer) spinner7.getValue()),
+                        new Point((Integer) spinner5.getValue(), (Integer) spinner8.getValue()),
+                        new Point((Integer) spinner6.getValue(), (Integer) spinner9.getValue()));
                 drawGraph();
             }
         });
@@ -90,10 +107,12 @@ public class Graph extends JDialog {
         Point E = arcPoints.get(0);
         Point F = arcPoints.get(1);
         for (int i = 0; i < 360; i++) {
-            int x = (int) (centerX + radius * Math.cos(i));
-            int y = (int) (centerY + radius * Math.sin(i));
-            if ((x >= E.x && x >= F.x) || (y >= E.y && y <= F.y)) {
-                this.points.put(key + i, new Point(x, y));
+            for (double j = 1; j < 2; j += 0.5) {
+                int x = (int) (centerX + radius * Math.cos(i / j));
+                int y = (int) (centerY + radius * Math.sin(i / j));
+                if ((x >= E.x && x >= F.x) || (y >= E.y && y <= F.y)) {
+                    this.graphPoints.put(key + i / j, new Point(x, y));
+                }
             }
         }
     }
@@ -104,12 +123,10 @@ public class Graph extends JDialog {
 
     private void drawGraph() {
         Graphics graphics = innerPane.getGraphics();
-
         graphics.setColor(CUSTOM_BLACK);
         drawGraphLines(graphics);
         drawCircle(graphics);
         drawCircle(graphics);
-        System.out.println(points);
     }
 
     private void initLinePoints() {
@@ -120,34 +137,33 @@ public class Graph extends JDialog {
         Point E = new Point(getArcIntersection(), graphCentre.y + GraphConfig.HEIGHT_3);
         Point F = new Point(getArcIntersection(), graphCentre.y - GraphConfig.HEIGHT_3);
 
-        points.put("A", A);
-        points.put("B", B);
-        points.put("C", C);
-        points.put("D", D);
-        points.put("E", E);
-        points.put("F", F);
+        graphPoints.put("A", A);
+        graphPoints.put("B", B);
+        graphPoints.put("C", C);
+        graphPoints.put("D", D);
+        graphPoints.put("E", E);
+        graphPoints.put("F", F);
 
         arcPoints.add(E);
         arcPoints.add(F);
     }
 
     private void drawCircle(Graphics graphics) {
-        for (Map.Entry<String, Point> entry : points.entrySet()) {
+        for (Map.Entry<String, Point> entry : graphPoints.entrySet()) {
             if (entry.getKey().contains("ARC") || entry.getKey().contains("CIRCLE")) {
                 Point value = entry.getValue();
                 graphics.drawLine(value.x, value.y, value.x, value.y);
             }
         }
-
     }
 
     private void drawGraphLines(Graphics graphics) {
-        Point a = points.get("A");
-        Point b = points.get("B");
-        Point c = points.get("C");
-        Point d = points.get("D");
-        Point e = points.get("E");
-        Point f = points.get("F");
+        Point a = graphPoints.get("A");
+        Point b = graphPoints.get("B");
+        Point c = graphPoints.get("C");
+        Point d = graphPoints.get("D");
+        Point e = graphPoints.get("E");
+        Point f = graphPoints.get("F");
 
         graphics.drawLine(a.x, a.y, b.x, b.y);
         graphics.drawLine(b.x, b.y, c.x, c.y);
@@ -168,23 +184,14 @@ public class Graph extends JDialog {
 
     private void drawAxis() {
         Graphics graphics = innerPane.getGraphics();
-        Dimension size = innerPane.getSize();
         graphics.setColor(Color.BLUE);
-        int heightHalf = size.height / 2;
-        int widthHalf = size.width / 2;
-        int cellWidthHalf = CELL_WIDTH / 2;
-        int cellHeightHalf = CELL_HEIGHT / 2;
 
-        graphics.drawLine(0, heightHalf, size.width, heightHalf);
-        graphics.drawLine(size.width, heightHalf, size.width - cellWidthHalf, heightHalf - cellHeightHalf);
-        graphics.drawLine(size.width, heightHalf, size.width - cellWidthHalf, heightHalf + cellHeightHalf);
-        graphics.drawString("X", (int) (size.width - CELL_WIDTH * 1.25), (int) (heightHalf + CELL_HEIGHT * 1.25));
-        graphics.setColor(Color.RED);
+        for (Map.Entry<Point, Point> entry : axisPoints.entrySet()) {
+            graphics.drawLine(entry.getValue().x, entry.getValue().y, entry.getKey().x, entry.getKey().y);
+        }
 
-        graphics.drawLine(widthHalf, 0, widthHalf, size.height);
-        graphics.drawLine(widthHalf, 0, widthHalf - cellWidthHalf, cellWidthHalf);
-        graphics.drawLine(widthHalf, 0, widthHalf + cellWidthHalf, cellWidthHalf);
-        graphics.drawString("Y", (int) (widthHalf + CELL_WIDTH * 1.25), (int) (CELL_HEIGHT * 1.25));
+        graphics.drawString("X", xAxeKeyPoint.x, xAxeKeyPoint.y);
+        graphics.drawString("Y", yAxeKeyPoint.x, yAxeKeyPoint.y);
     }
 
     private void drawGrid() {
@@ -194,11 +201,8 @@ public class Graph extends JDialog {
         Dimension size = innerPane.getSize();
         graphics.setPaintMode();
         graphics.setColor(CUSTOM_GRAY);
-        for (int i = 0; i < size.width / CELL_WIDTH; i++) {
-            graphics.drawLine(0, graphCentre.y - i * CELL_WIDTH, size.width, graphCentre.y - i * CELL_WIDTH);
-            graphics.drawLine(0, graphCentre.y + i * CELL_WIDTH, size.width, graphCentre.y + i * CELL_WIDTH);
-            graphics.drawLine(graphCentre.x - i * CELL_HEIGHT, 0, graphCentre.x - i * CELL_HEIGHT, size.height);
-            graphics.drawLine(graphCentre.x + i * CELL_HEIGHT, 0, graphCentre.x + i * CELL_HEIGHT, size.height);
+        for (Map.Entry<Point, Point> entry : gridPoints.entrySet()) {
+            graphics.drawLine(entry.getKey().x, entry.getKey().y, entry.getValue().x, entry.getValue().y);
         }
     }
 
@@ -208,10 +212,44 @@ public class Graph extends JDialog {
         graphics.setColor(Color.WHITE);
         graphics.clearRect(bounds.x - CELL_WIDTH, bounds.y - CELL_HEIGHT, bounds.width, bounds.height);
         graphics.fillRect(bounds.x - CELL_WIDTH, bounds.y - CELL_HEIGHT, bounds.width, bounds.height);
+        initPoints();
         drawGrid();
         drawAxis();
+    }
+
+    private void initPoints() {
+        initGridPoints();
+        initAxisPoints();
         initLinePoints();
         initCirclePoints(GraphConfig.DIAMETER_1 / 2, graphCentre.x, graphCentre.y, "CIRCLE");
         initCirclePoints(GraphConfig.DIAMETER_2 / 2, graphCentre.x, graphCentre.y, "ARC");
+    }
+
+    private void initAxisPoints() {
+        Dimension size = innerPane.getSize();
+        int heightHalf = size.height / 2;
+        int widthHalf = size.width / 2;
+        int cellWidthHalf = CELL_WIDTH / 2;
+        int cellHeightHalf = CELL_HEIGHT / 2;
+
+        axisPoints.put(new Point(size.width, heightHalf), new Point(0, heightHalf));
+        axisPoints.put(new Point(size.width - cellWidthHalf, heightHalf - cellHeightHalf), new Point(size.width, heightHalf));
+        axisPoints.put(new Point(size.width - cellWidthHalf, heightHalf + cellHeightHalf), new Point(size.width, heightHalf));
+        xAxeKeyPoint = new Point((int) (size.width - CELL_WIDTH * 1.25), (int) (heightHalf + CELL_HEIGHT * 1.25));
+
+        axisPoints.put(new Point(widthHalf, size.height), new Point(widthHalf, 0));
+        axisPoints.put(new Point(widthHalf - cellWidthHalf, cellWidthHalf), new Point(widthHalf, 0));
+        axisPoints.put(new Point(widthHalf + cellWidthHalf, cellWidthHalf), new Point(widthHalf, 0));
+        yAxeKeyPoint = new Point((int) (widthHalf + CELL_WIDTH * 1.25), (int) (CELL_HEIGHT * 1.25));
+    }
+
+    private void initGridPoints() {
+        Dimension size = innerPane.getSize();
+        for (int i = 0; i < size.width / CELL_WIDTH; i++) {
+            gridPoints.put(new Point(0, graphCentre.y - i * CELL_WIDTH), new Point(size.width, graphCentre.y - i * CELL_WIDTH));
+            gridPoints.put(new Point(0, graphCentre.y + i * CELL_WIDTH), new Point(size.width, graphCentre.y + i * CELL_WIDTH));
+            gridPoints.put(new Point(graphCentre.x - i * CELL_HEIGHT, 0), new Point(graphCentre.x - i * CELL_HEIGHT, size.height));
+            gridPoints.put(new Point(graphCentre.x + i * CELL_HEIGHT, 0), new Point(graphCentre.x + i * CELL_HEIGHT, size.height));
+        }
     }
 }
