@@ -14,7 +14,7 @@ public class Graph extends JDialog {
     private static final int CELL_WIDTH = 10;
     private static final int CELL_HEIGHT = 10;
     static final int WIDTH = 1080;
-    static final int HEIGHT = 560;
+    static final int HEIGHT = 780;
     private static final Color CUSTOM_GRAY = new Color(128, 128, 128, 64);
     private static final Color CUSTOM_BLACK = new Color(0, 0, 0, 128);
 
@@ -35,12 +35,20 @@ public class Graph extends JDialog {
     private JSpinner spinner8;
     private JSpinner spinner9;
     private JButton redrawAffinn;
+    private JButton redrawProjective;
+    private JSpinner spinner10;
+    private JSpinner spinner11;
+    private JSpinner spinner12;
+    private JSpinner spinner13;
+    private JSpinner spinner14;
+    private JSpinner spinner15;
+    private JSpinner spinner16;
+    private JSpinner spinner17;
+    private JSpinner spinner18;
     private Point graphCentre;
     private Map<String, Point> graphPoints;
     private Map<Point, Point> gridPoints;
     private Map<Point, Point> axisPoints;
-    private Point xAxeKeyPoint;
-    private Point yAxeKeyPoint;
     private List<Point> arcPoints;
 
     Graph() {
@@ -66,7 +74,6 @@ public class Graph extends JDialog {
             public void mouseClicked(MouseEvent e) {
                 super.mouseClicked(e);
                 initCenter();
-                initPoints();
                 clearSurface();
                 drawGraph();
             }
@@ -93,11 +100,43 @@ public class Graph extends JDialog {
             @Override
             public void mouseClicked(MouseEvent e) {
                 super.mouseClicked(e);
-                clearSurface();
+                clearSurface(false);
                 graphPoints = TransformationUtil.transformGraphAffin(graphPoints,
                         new Point((Integer) spinner4.getValue(), (Integer) spinner7.getValue()),
                         new Point((Integer) spinner5.getValue(), (Integer) spinner8.getValue()),
                         new Point((Integer) spinner6.getValue(), (Integer) spinner9.getValue()));
+                gridPoints = TransformationUtil.transformGridAffin(gridPoints,
+                        new Point((Integer) spinner4.getValue(), (Integer) spinner7.getValue()),
+                        new Point((Integer) spinner5.getValue(), (Integer) spinner8.getValue()),
+                        new Point((Integer) spinner6.getValue(), (Integer) spinner9.getValue()));
+                axisPoints = TransformationUtil.transformGridAffin(axisPoints,
+                        new Point((Integer) spinner4.getValue(), (Integer) spinner7.getValue()),
+                        new Point((Integer) spinner5.getValue(), (Integer) spinner8.getValue()),
+                        new Point((Integer) spinner6.getValue(), (Integer) spinner9.getValue()));
+                drawGrid();
+                drawAxis();
+                drawGraph();
+            }
+        });
+        redrawProjective.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                super.mouseClicked(e);
+                clearSurface(false);
+                graphPoints = TransformationUtil.transformGraphProjective(graphPoints,
+                        new Point((Integer) spinner10.getValue(), (Integer) spinner11.getValue()), (Integer) spinner12.getValue(),
+                        new Point((Integer) spinner13.getValue(), (Integer) spinner14.getValue()), (Integer) spinner15.getValue(),
+                        new Point((Integer) spinner16.getValue(), (Integer) spinner17.getValue()), (Integer) spinner18.getValue());
+                gridPoints = TransformationUtil.transformGridProjective(gridPoints,
+                        new Point((Integer) spinner10.getValue(), (Integer) spinner11.getValue()), (Integer) spinner12.getValue(),
+                        new Point((Integer) spinner13.getValue(), (Integer) spinner14.getValue()), (Integer) spinner15.getValue(),
+                        new Point((Integer) spinner16.getValue(), (Integer) spinner17.getValue()), (Integer) spinner18.getValue());
+                axisPoints = TransformationUtil.transformGridProjective(axisPoints,
+                        new Point((Integer) spinner10.getValue(), (Integer) spinner11.getValue()), (Integer) spinner12.getValue(),
+                        new Point((Integer) spinner13.getValue(), (Integer) spinner14.getValue()), (Integer) spinner15.getValue(),
+                        new Point((Integer) spinner16.getValue(), (Integer) spinner17.getValue()), (Integer) spinner18.getValue());
+                drawGrid();
+                drawAxis();
                 drawGraph();
             }
         });
@@ -190,6 +229,8 @@ public class Graph extends JDialog {
             graphics.drawLine(entry.getValue().x, entry.getValue().y, entry.getKey().x, entry.getKey().y);
         }
 
+        Point xAxeKeyPoint = graphPoints.get("xAxe");
+        Point yAxeKeyPoint = graphPoints.get("yAxe");
         graphics.drawString("X", xAxeKeyPoint.x, xAxeKeyPoint.y);
         graphics.drawString("Y", yAxeKeyPoint.x, yAxeKeyPoint.y);
     }
@@ -198,7 +239,6 @@ public class Graph extends JDialog {
         Graphics graphics = innerPane.getGraphics();
         Graphics2D g2 = (Graphics2D) graphics;
         g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-        Dimension size = innerPane.getSize();
         graphics.setPaintMode();
         graphics.setColor(CUSTOM_GRAY);
         for (Map.Entry<Point, Point> entry : gridPoints.entrySet()) {
@@ -206,15 +246,24 @@ public class Graph extends JDialog {
         }
     }
 
-    private void clearSurface() {
+    private void clearSurface(boolean needTo) {
         Graphics graphics = innerPane.getGraphics();
         Rectangle bounds = innerPane.getBounds();
         graphics.setColor(Color.WHITE);
         graphics.clearRect(bounds.x - CELL_WIDTH, bounds.y - CELL_HEIGHT, bounds.width, bounds.height);
         graphics.fillRect(bounds.x - CELL_WIDTH, bounds.y - CELL_HEIGHT, bounds.width, bounds.height);
-        initPoints();
-        drawGrid();
-        drawAxis();
+        if (needTo) {
+            gridPoints.clear();
+            axisPoints.clear();
+            graphPoints.clear();
+            initPoints();
+            drawGrid();
+            drawAxis();
+        }
+    }
+
+    private void clearSurface() {
+        clearSurface(true);
     }
 
     private void initPoints() {
@@ -235,12 +284,12 @@ public class Graph extends JDialog {
         axisPoints.put(new Point(size.width, heightHalf), new Point(0, heightHalf));
         axisPoints.put(new Point(size.width - cellWidthHalf, heightHalf - cellHeightHalf), new Point(size.width, heightHalf));
         axisPoints.put(new Point(size.width - cellWidthHalf, heightHalf + cellHeightHalf), new Point(size.width, heightHalf));
-        xAxeKeyPoint = new Point((int) (size.width - CELL_WIDTH * 1.25), (int) (heightHalf + CELL_HEIGHT * 1.25));
+        graphPoints.put("xAxe", new Point((int) (size.width - CELL_WIDTH * 1.25), (int) (heightHalf + CELL_HEIGHT * 1.25)));
 
         axisPoints.put(new Point(widthHalf, size.height), new Point(widthHalf, 0));
         axisPoints.put(new Point(widthHalf - cellWidthHalf, cellWidthHalf), new Point(widthHalf, 0));
         axisPoints.put(new Point(widthHalf + cellWidthHalf, cellWidthHalf), new Point(widthHalf, 0));
-        yAxeKeyPoint = new Point((int) (widthHalf + CELL_WIDTH * 1.25), (int) (CELL_HEIGHT * 1.25));
+        graphPoints.put("yAxe", new Point((int) (widthHalf + CELL_WIDTH * 1.25), (int) (CELL_HEIGHT * 1.25)));
     }
 
     private void initGridPoints() {
