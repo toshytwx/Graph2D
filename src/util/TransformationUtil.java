@@ -23,7 +23,6 @@ public class TransformationUtil {
             }
             Point transformedPoint = new Point(transformedX, transformedY);
             transformedPoints.put(entry.getKey(), transformedPoint);
-            System.out.print(rawPointX == transformedX);
         }
         return transformedPoints;
     }
