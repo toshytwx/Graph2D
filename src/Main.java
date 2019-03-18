@@ -1,3 +1,5 @@
+import view.Graph;
+
 import javax.swing.*;
 import java.awt.*;
 
